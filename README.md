@@ -13,9 +13,9 @@ If UseAuth and S3Sync currently use different Supabase projects, consolidate the
 ## Setup
 
 1. Apply the finance SQL migration to the shared Supabase project. Apply S3Sync's files migration if it is not already present.
-2. Copy `.env.example` to `.env.local` and set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `AUTH_SERVICE_URL`, and `S3_SYNC_URL`. The URL and publishable key must point to the same Supabase project as UseAuth and S3Sync. No service role key is needed in MyMoney.
+2. Copy `.env.example` to `.env.local` and set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. MyMoney defaults to `https://use-auth-rosy.vercel.app` and `https://s3-sync.vercel.app`; override `AUTH_SERVICE_URL` or `S3_SYNC_URL` if those domains change. The Supabase URL and publishable key must point to the same project as UseAuth and S3Sync. No service role key is needed in MyMoney.
 3. Add the MyMoney browser origin to S3 bucket CORS for `PUT` uploads.
-4. Link the MyMoney repository to its Vercel project and set the four environment variables there. Pull them into `.env.local`, verify the keys are present, then run `npm install` and `npm run dev`. Deploy with the Next.js preset. Never expose a Supabase service role key or AWS credentials in this app.
+4. Link the MyMoney repository to its Vercel project and set the Supabase environment variables there. Pull them into `.env.local`, verify the keys are present, then run `npm install` and `npm run dev`. Deploy with the Next.js preset. Never expose a Supabase service role key or AWS credentials in this app.
 
 The default transaction currency is INR. Amounts are stored as positive integer minor units (paise) so totals have no floating point rounding drift. Each transaction also records its ISO currency code; the overview currently shows INR totals and is intended for a single currency workspace.
 
