@@ -12,7 +12,7 @@ UseAuth and MyMoney are configured to use S3Sync's Supabase project. Keep them o
 
 ## Setup
 
-1. Apply the finance SQL migration to the shared Supabase project. S3Sync's `files` table is already present in that project. In Supabase Authentication → URL Configuration, set the Site URL to `https://use-auth-rosy.vercel.app` and add `https://use-auth-rosy.vercel.app/auth/confirm` to Redirect URLs so email confirmation works.
+1. Apply the finance SQL migration to the shared Supabase project. S3Sync's `files` table is already present in that project. In Supabase Authentication → URL Configuration, set the Site URL to `https://use-auth-rosy.vercel.app` and add `https://use-auth-rosy.vercel.app/auth/confirm` to Redirect URLs. In the Confirm signup email template, use `<a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email">Confirm your email</a>` so UseAuth can complete confirmation.
 2. Copy `.env.example` to `.env.local` and set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. MyMoney defaults to `https://use-auth-rosy.vercel.app` and `https://s3-sync.vercel.app`; override `AUTH_SERVICE_URL` or `S3_SYNC_URL` if those domains change. The Supabase URL and publishable key must point to the same project as UseAuth and S3Sync. No service role key is needed in MyMoney.
 3. Add the MyMoney browser origin to S3 bucket CORS for `PUT` uploads.
 4. Link the MyMoney repository to its Vercel project and set the Supabase environment variables there. Pull them into `.env.local`, verify the keys are present, then run `npm install` and `npm run dev`. Deploy with the Next.js preset. Never expose a Supabase service role key or AWS credentials in this app.
