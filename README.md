@@ -8,11 +8,11 @@ A private finance tracker built with Next.js for Vercel. It records income and e
 - **Database:** the **same Supabase project** used by UseAuth. Apply [`supabase/migrations/001_finance.sql`](supabase/migrations/001_finance.sql) in its SQL editor. Every finance table has owner RLS. The database also checks that source, category, and transaction relationships stay within the same owner, and that a transaction uses a category of the same kind.
 - **Files:** the **same Supabase project** used by S3Sync, with its `public.files` migration already applied. MyMoney proxies the S3Sync signing API; the browser uploads directly to private S3 and links the finalized file to a transaction. S3 bucket CORS must include the MyMoney origin.
 
-If UseAuth and S3Sync currently use different Supabase projects, consolidate them onto one project before using attachments. A token from one project cannot authorize the other project's files.
+UseAuth and MyMoney are configured to use S3Sync's Supabase project. Keep them on the same project: a token from one project cannot authorize another project's files.
 
 ## Setup
 
-1. Apply the finance SQL migration to the shared Supabase project. Apply S3Sync's files migration if it is not already present.
+1. Apply the finance SQL migration to the shared Supabase project. S3Sync's `files` table is already present in that project. In Supabase Authentication → URL Configuration, set the Site URL to `https://use-auth-rosy.vercel.app` and add `https://use-auth-rosy.vercel.app/auth/confirm` to Redirect URLs so email confirmation works.
 2. Copy `.env.example` to `.env.local` and set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. MyMoney defaults to `https://use-auth-rosy.vercel.app` and `https://s3-sync.vercel.app`; override `AUTH_SERVICE_URL` or `S3_SYNC_URL` if those domains change. The Supabase URL and publishable key must point to the same project as UseAuth and S3Sync. No service role key is needed in MyMoney.
 3. Add the MyMoney browser origin to S3 bucket CORS for `PUT` uploads.
 4. Link the MyMoney repository to its Vercel project and set the Supabase environment variables there. Pull them into `.env.local`, verify the keys are present, then run `npm install` and `npm run dev`. Deploy with the Next.js preset. Never expose a Supabase service role key or AWS credentials in this app.
