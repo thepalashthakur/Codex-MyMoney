@@ -95,3 +95,11 @@ html,body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-ser
 .auth-form>p{color:var(--muted)}
 .auth-switch{color:var(--muted)}
 @media(max-width:760px){.sidebar{width:250px}.topbar{height:56px;padding:0 18px}.content{padding:27px 16px 60px}.page-heading h1{font-size:26px}}
+:root{--app-bg:var(--paper);--surface:#ffffff;--sidebar:#fffcf2;--ink-hover:#3a3834;--sidebar-hover:#f0ede5}
+
+:root{--app-bg:var(--paper);--bg:var(--paper);--surface:#fffcf2;--panel:#fffcf2;--paper:#fffcf2;--sidebar:#f5f2e9;--ink:#252422;--accent:#eb5e28}
+body,.auth-page,.auth-form-wrap,.topbar,.stat-card,.table-card,.table-head,.table-row,.list-card,.source-card,.source-add,.settings-card,.editor-modal,.detail-panel,.search-box{background:#fffcf2}
+.auth-form>p,.stat-title,.stat-note,.section-heading p,.table-head,.transaction-main small,.date-cell,.list-empty,.category-row small,.settings-row span,.auth-switch{color:#706e68}
+.brand-mark,.primary-button{color:#fffcf2}.hero-card{background:#252422}.stat-icon.expense,.small-round.expense,.transaction-icon.expense{color:#eb5e28}.hero-label,.hero-content p{color:#e5e1d6}
+
+.auth-form .MuiInputBase-input{border:0!important;background:transparent!important;margin:0!important;box-shadow:none!important;padding:10px 12px!important;height:auto}.auth-form .MuiInputBase-root{background:#fffcf2}.MuiButton-root.primary-button{background:#252422;color:#fffcf2}.MuiButton-root.primary-button:hover{background:#3a3834}.MuiButton-root.secondary-button{background:#fffcf2;color:#252422;border-color:var(--line)}.MuiButton-root.icon-button{min-width:0;padding:6px}.MuiButton-root.table-row{display:grid;text-align:left;text-transform:none}.MuiButton-root.source-add{display:flex;flex-direction:column}.MuiButton-root.nav-item{justify-content:flex-start}.auth-submit{width:100%}
