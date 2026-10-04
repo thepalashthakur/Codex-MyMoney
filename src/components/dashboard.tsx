@@ -5,22 +5,20 @@ import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import Dialog from "@mui/material/Dialog";
+import Drawer from "@mui/material/Drawer";
 import DialogContent from "@mui/material/DialogContent";
 import Alert from "@mui/material/Alert";
 import Skeleton from "@mui/material/Skeleton";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
-import { ArrowRight, ArrowUpRight, CreditCard, Pencil, FileText, FolderTree, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, Trash2, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CreditCard, Pencil, FileText, Menu, Plus, Search, Trash2, X } from "lucide-react";
 
 import type { Source, Category, Transaction, Attachment, Tab } from "./finance-types";
 import { api, formatMoney, formatDate } from "./finance-utils";
 import { Stat, TransactionTable, CategorySection } from "./finance-primitives";
 import { Editor } from "./finance-editor";
 import { AuthScreen } from "./finance-auth-screen";
-const nav: { key: Tab; label: string; Icon: typeof LayoutDashboard }[] = [
-  { key: "overview", label: "Overview", Icon: LayoutDashboard }, { key: "transactions", label: "Transactions", Icon: ArrowRight },
-  { key: "categories", label: "Categories", Icon: FolderTree }, { key: "sources", label: "Sources", Icon: CreditCard }, { key: "settings", label: "Settings", Icon: Settings2 },
-];
+import { FinanceNavigation, nav } from "./finance-navigation";
 export default function Dashboard() {
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,13 +71,8 @@ export default function Dashboard() {
   if (!user) return <AuthScreen onSuccess={async (u) => { setUser(u); setLoading(true); try { await load(); } catch (cause) { setError((cause as Error).message); } finally { setLoading(false); } }} />;
 
   return <div className="app-shell">
-    <aside className={`sidebar ${mobileNav ? "sidebar-open" : ""}`}>
-      <div className="sidebar-top"><div className="brand"><div className="brand-mark">M</div><div><strong>MyMoney</strong><span>PERSONAL FINANCE</span></div></div><Button className="icon-button close-mobile" onClick={() => setMobileNav(false)} aria-label="Close menu"><X size={19}/></Button></div>
-      <div className="workspace-label">WORKSPACE</div>
-      <nav className="nav-list">{nav.map(({ key, label, Icon }) => <Button key={key} className={`nav-item ${tab === key ? "active" : ""}`} onClick={() => { setTab(key); setMobileNav(false); setError(""); }}><Icon size={18} strokeWidth={1.9}/>{label}{tab === key && <span className="nav-active-line"/>}</Button>)}</nav>
-      <div className="sidebar-bottom"><div className="profile"><div className="avatar">{user.email?.slice(0,1).toUpperCase()}</div><div className="profile-text"><strong>{user.email?.split("@")[0]}</strong><span>{user.email}</span></div><Button className="icon-button" onClick={signOut} title="Sign out"><LogOut size={17}/></Button></div></div>
-    </aside>
-    {mobileNav && <button className="nav-scrim" aria-label="Close navigation" onClick={() => setMobileNav(false)}/>}
+    <aside className="sidebar"><FinanceNavigation email={user.email} tab={tab} onTab={value => { setTab(value); setError(""); }} onSignOut={() => void signOut()} onClose={() => setMobileNav(false)}/></aside>
+    <Drawer anchor="left" open={mobileNav} onClose={() => setMobileNav(false)} slotProps={{ paper: { sx: { width: 260, bgcolor: "background.paper" } } }}><FinanceNavigation email={user.email} tab={tab} onTab={value => { setTab(value); setError(""); }} onSignOut={() => void signOut()} onClose={() => setMobileNav(false)} mobile/></Drawer>
     <main className="main"><header className="topbar"><Button className="icon-button mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open menu"><Menu size={21}/></Button><div className="breadcrumb">Personal workspace <span>/</span> <strong>{nav.find(n => n.key === tab)?.label}</strong></div><div className="topbar-right"><span className="topbar-date">{new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" }).format(new Date())}</span><div className="top-avatar">{user.email?.slice(0,1).toUpperCase()}</div></div></header>
       <div className="content">
         {error && <Alert severity="error" onClose={() => setError("")} sx={{ mb: 2 }}>{error}</Alert>}
