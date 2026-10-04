@@ -4,41 +4,23 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
-import MenuItem from "@mui/material/MenuItem";
-import DialogActions from "@mui/material/DialogActions";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import Alert from "@mui/material/Alert";
 import Skeleton from "@mui/material/Skeleton";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
-import { ArrowDownLeft, ArrowRight, ArrowUpRight, CreditCard, Pencil, FileText, FolderTree, LayoutDashboard, LogOut, Menu, MoreHorizontal, Plus, Search, Settings2, Trash2, Wallet, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CreditCard, Pencil, FileText, FolderTree, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, Trash2, X } from "lucide-react";
 
-type Source = { id: string; name: string; kind: string; color: string; last_four: string | null };
-type Category = { id: string; name: string; kind: "income" | "expense"; color: string; parent_id: string | null };
-type Transaction = { id: string; kind: "income" | "expense"; amount_minor: number; currency: string; occurred_on: string; description: string; note: string; source_id: string | null; category_id: string | null; metadata: Record<string, unknown> };
-type Attachment = { id: string; transaction_id: string; file_id: string; file_name: string; content_type: string; size_bytes: number };
-type Tab = "overview" | "transactions" | "categories" | "sources" | "settings";
+import type { Source, Category, Transaction, Attachment, Tab } from "./finance-types";
+import { api, formatMoney, formatDate } from "./finance-utils";
+import { Stat, TransactionTable, CategorySection } from "./finance-primitives";
+import { Editor } from "./finance-editor";
+import { AuthScreen } from "./finance-auth-screen";
 const nav: { key: Tab; label: string; Icon: typeof LayoutDashboard }[] = [
   { key: "overview", label: "Overview", Icon: LayoutDashboard }, { key: "transactions", label: "Transactions", Icon: ArrowRight },
   { key: "categories", label: "Categories", Icon: FolderTree }, { key: "sources", label: "Sources", Icon: CreditCard }, { key: "settings", label: "Settings", Icon: Settings2 },
 ];
-const formatMoney = (minor: number, currency = "INR") => new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 2 }).format(minor / 100);
-const formatDate = (date: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
-const today = () => new Date().toLocaleDateString("en-CA");
-
-async function api<T = Record<string, unknown>>(path: string, init?: RequestInit): Promise<T> {
-  const send = () => fetch(path, { ...init, headers: { ...(init?.body ? { "Content-Type": "application/json" } : {}), ...init?.headers }, cache: "no-store" });
-  let response = await send();
-  if (response.status === 401 && !path.includes("/api/session/")) {
-    const refresh = await fetch("/api/session/refresh", { method: "POST" });
-    if (refresh.ok) response = await send();
-  }
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error?.message || data.error || "Request failed");
-  return data as T;
-}
-
 export default function Dashboard() {
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,48 +101,3 @@ export default function Dashboard() {
     {selected && <Dialog open onClose={() => setSelected(null)} fullScreen={smallScreen} aria-labelledby="transaction-detail-title"><DialogContent className="detail-panel"><div className="modal-header"><div><span className="eyebrow">TRANSACTION DETAILS</span><h2 id="transaction-detail-title">{selected.description}</h2></div><Button className="icon-button" onClick={() => setSelected(null)}><X size={21}/></Button></div><div className={`detail-amount ${selected.kind}`}>{selected.kind === "expense" ? "−" : "+"}{formatMoney(selected.amount_minor, selected.currency)}</div><div className="detail-list"><div><span>Date</span><strong>{formatDate(selected.occurred_on)}</strong></div><div><span>Category</span><strong>{catName(selected.category_id)}</strong></div><div><span>Source</span><strong>{sourceName(selected.source_id)}</strong></div><div><span>Type</span><strong className="capitalize">{selected.kind}</strong></div>{selected.note && <div><span>Note</span><strong>{selected.note}</strong></div>}</div><div className="detail-files"><h3>Attachments</h3>{attachments.filter(a => a.transaction_id === selected.id).map(a => <Button key={a.id} onClick={async () => { try { const result = await api<{ url: string }>("/api/files", { method: "POST", body: JSON.stringify({ action: "download", fileId: a.file_id }) }); window.open(result.url, "_blank", "noopener,noreferrer"); } catch (cause) { setError((cause as Error).message); } }}><FileText size={17}/>{a.file_name}<ArrowUpRight size={15}/></Button>)}<label className="upload-label"><Plus size={17}/> Attach a file<input type="file" hidden onChange={async e => { const file = e.target.files?.[0]; if (!file) return; try { const signed = await api<{ url: string; fileId: string; objectKey: string }>("/api/files", { method: "POST", body: JSON.stringify({ action: "upload", fileName: file.name, contentType: file.type || "application/octet-stream", size: file.size }) }); const put = await fetch(signed.url, { method: "PUT", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file }); if (!put.ok) throw new Error("Upload failed"); await api("/api/files", { method: "POST", body: JSON.stringify({ action: "finalize", fileId: signed.fileId, objectKey: signed.objectKey, fileName: file.name, contentType: file.type || "application/octet-stream", size: file.size }) }); await api("/api/v1/attachments", { method: "POST", body: JSON.stringify({ transaction_id: selected.id, file_id: signed.fileId }) }); await load(); } catch (cause) { setError((cause as Error).message); } }}/></label></div><Button variant="outlined" className="secondary-button detail-edit" onClick={() => edit("transaction", selected)}><Pencil size={16}/> Edit transaction</Button><Button className="danger-button" onClick={() => remove("transactions", selected.id)}><Trash2 size={17}/> Delete transaction</Button></DialogContent></Dialog>}
   </div>;
 }
-
-function Stat({ title, amount, icon, note }: { title: string; amount: number; icon: "income" | "expense"; note: string }) { return <Paper elevation={0} className="stat-card"><div className={`stat-icon ${icon}`}>{icon === "income" ? <ArrowDownLeft size={21}/> : <ArrowUpRight size={21}/>}</div><div className="stat-title">{title}</div><div className="stat-amount">{formatMoney(amount)}</div><div className="stat-note">{note}</div></Paper>; }
-function TransactionTable({ rows, categories, sources, onClick }: { rows: Transaction[]; categories: Category[]; sources: Source[]; onClick: (t: Transaction) => void }) { return <Paper elevation={0} className="table-card"><div className="table-head"><span>TRANSACTION</span><span>CATEGORY</span><span>DATE</span><span>AMOUNT</span><span/></div>{rows.length === 0 ? <div className="empty-state"><div className="empty-icon"><Wallet size={27}/></div><h3>Nothing here yet</h3><p>Your transactions will show up here as soon as you add one.</p></div> : rows.map(t => <Button className="table-row" key={t.id} onClick={() => onClick(t)}><span className="transaction-main"><span className={`transaction-icon ${t.kind}`}>{t.kind === "income" ? <ArrowDownLeft size={20}/> : <ArrowUpRight size={20}/>}</span><span><strong>{t.description}</strong><small>{sources.find(s => s.id === t.source_id)?.name || "No source"}</small></span></span><span className="category-cell">{categories.find(c => c.id === t.category_id)?.name || "Uncategorized"}</span><span className="date-cell">{formatDate(t.occurred_on)}</span><span className={`amount-cell ${t.kind}`}>{t.kind === "expense" ? "−" : "+"}{formatMoney(t.amount_minor, t.currency)}</span><MoreHorizontal size={18} className="more-icon"/></Button>)}</Paper>; }
-function CategorySection({ title, kind, categories, onDelete, onEdit }: { title: string; kind: "income" | "expense"; categories: Category[]; onDelete: (id: string) => void; onEdit: (item: Category) => void }) { const items = categories.filter(c => c.kind === kind); return <Paper elevation={0} className="list-card"><div className="list-card-heading"><div className={`small-round ${kind}`}>{kind === "income" ? <ArrowDownLeft size={18}/> : <ArrowUpRight size={18}/>}</div><h2>{title}</h2><span>{items.length}</span></div>{items.length === 0 ? <p className="list-empty">No categories yet. Add one to get organized.</p> : items.map(c => <div className="category-row" key={c.id}><span className="color-dot" style={{ background: c.color }}/><span style={{ paddingLeft: c.parent_id ? 18 : 0 }}>{c.name}{c.parent_id && <small>under {categories.find(p => p.id === c.parent_id)?.name}</small>}</span><Button className="icon-button" onClick={() => onEdit(c)} aria-label={`Edit ${c.name}`}><Pencil size={15}/></Button><Button className="icon-button" onClick={() => onDelete(c.id)} aria-label={`Delete ${c.name}`}><Trash2 size={15}/></Button></div>)}</Paper>; }
-
-function Editor({ type, initial, sources, categories, onClose, onDone }: { type: "transaction" | "category" | "source"; initial: Transaction | Category | Source | null; sources: Source[]; categories: Category[]; onClose: () => void; onDone: () => Promise<void> }) {
-  const [kind, setKind] = useState<"income" | "expense">(initial && "kind" in initial && (initial.kind === "income" || initial.kind === "expense") ? initial.kind : "expense"); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
-  const compact = useMediaQuery(useTheme().breakpoints.down("sm"));
-  const submit = async (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); setBusy(true); setError(""); const form = new FormData(e.currentTarget); try {
-    let body: Record<string, unknown>;
-    if (type === "transaction") body = { kind, amount_minor: Math.round(Number(form.get("amount")) * 100), currency: String(form.get("currency") || "INR").toUpperCase(), occurred_on: String(form.get("date")), description: String(form.get("description")), note: String(form.get("note") || ""), category_id: form.get("category_id") || null, source_id: form.get("source_id") || null, metadata: form.get("metadata") ? JSON.parse(String(form.get("metadata"))) : {} };
-    else if (type === "category") body = { name: String(form.get("name")), kind, parent_id: form.get("parent_id") || null, color: String(form.get("color")) };
-    else body = { name: String(form.get("name")), kind: String(form.get("source_kind")), color: String(form.get("color")), last_four: form.get("last_four") || null };
-    await api(`/api/v1/${type === "transaction" ? "transactions" : type === "category" ? "categories" : "sources"}${initial ? `/${initial.id}` : ""}`, { method: initial ? "PATCH" : "POST", body: JSON.stringify(body) }); await onDone();
-  } catch (cause) { setError((cause as Error).message); } finally { setBusy(false); } };
-  return <Dialog open onClose={onClose} aria-labelledby="editor-title" fullScreen={compact}>
-    <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
-      <div className="modal-header"><div><span className="eyebrow">LET’S KEEP TRACK</span><h2 id="editor-title">{initial ? `Edit ${type}` : type === "transaction" ? "Add transaction" : type === "category" ? "New category" : "Add source"}</h2></div><Button className="icon-button" onClick={onClose} aria-label="Close dialog"><X size={21}/></Button></div>
-      <form className="editor-form" onSubmit={submit}>
-        {type !== "source" && <div className="type-picker"><Button type="button" className={kind === "expense" ? "selected" : ""} onClick={() => setKind("expense")}><ArrowUpRight size={17}/> Expense</Button><Button type="button" className={kind === "income" ? "selected" : ""} onClick={() => setKind("income")}><ArrowDownLeft size={17}/> Income</Button></div>}
-        {type === "transaction" ? <>
-          <TextField label="Amount" name="amount" type="number" defaultValue={initial && "amount_minor" in initial ? initial.amount_minor / 100 : ""} slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }} required fullWidth/>
-          <div className="form-row"><TextField label="Description" name="description" defaultValue={initial && "description" in initial ? initial.description : ""} slotProps={{ htmlInput: { maxLength: 200 } }} required/><TextField label="Date" name="date" type="date" defaultValue={initial && "occurred_on" in initial ? initial.occurred_on : today()} slotProps={{ inputLabel: { shrink: true } }} required/></div>
-          <div className="form-row"><TextField select label="Category" name="category_id" defaultValue={initial && "category_id" in initial ? initial.category_id || "" : ""}><MenuItem value="">Uncategorized</MenuItem>{categories.filter(c => c.kind === kind).map(c => <MenuItem value={c.id} key={c.id}>{c.parent_id ? "↳ " : ""}{c.name}</MenuItem>)}</TextField><TextField select label="Source" name="source_id" defaultValue={initial && "source_id" in initial ? initial.source_id || "" : ""}><MenuItem value="">No source</MenuItem>{sources.map(source => <MenuItem value={source.id} key={source.id}>{source.name}</MenuItem>)}</TextField></div>
-          <TextField label="Note" name="note" defaultValue={initial && "note" in initial ? initial.note : ""} multiline minRows={3} fullWidth/>
-          <TextField label="Additional metadata (JSON)" name="metadata" defaultValue={initial && "metadata" in initial ? JSON.stringify(initial.metadata) : ""} multiline minRows={2} fullWidth/>
-          <input name="currency" type="hidden" value={initial && "currency" in initial ? initial.currency : "INR"}/>
-        </> : type === "category" ? <>
-          <TextField label="Category name" name="name" defaultValue={initial && "name" in initial ? initial.name : ""} placeholder={kind === "expense" ? "e.g. Groceries" : "e.g. Salary"} required fullWidth/>
-          <TextField select label="Parent category" name="parent_id" defaultValue={initial && "parent_id" in initial ? initial.parent_id || "" : ""} fullWidth><MenuItem value="">Top level category</MenuItem>{categories.filter(c => c.kind === kind).map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}</TextField>
-          <label>Color<input name="color" type="color" defaultValue={initial && "color" in initial ? initial.color : kind === "expense" ? "#ba3b42" : "#245fa6"}/></label>
-        </> : <>
-          <TextField label="Source name" name="name" defaultValue={initial && "name" in initial ? initial.name : ""} placeholder="e.g. Savings account" required fullWidth/>
-          <TextField label="Type" name="source_kind" defaultValue={initial && "kind" in initial ? initial.kind : "Bank account"} slotProps={{ htmlInput: { list: "source-kind-suggestions", maxLength: 40 } }} required fullWidth/>
-          <datalist id="source-kind-suggestions"><option value="Bank account"/><option value="Credit card"/><option value="Debit card"/><option value="Cash"/><option value="Bank transfer"/><option value="Digital wallet"/></datalist>
-          <div className="form-row"><TextField label="Last 4 digits" name="last_four" defaultValue={initial && "last_four" in initial ? initial.last_four || "" : ""} slotProps={{ htmlInput: { inputMode: "numeric", maxLength: 4 } }}/><label>Color<input name="color" type="color" defaultValue={initial && "color" in initial ? initial.color : "#245fa6"}/></label></div>
-        </>}
-        {error && <Alert severity="error" role="alert">{error}</Alert>}
-        <DialogActions sx={{ p: 0, pt: 1 }}><Button type="button" onClick={onClose}>Cancel</Button><Button variant="contained" disabled={busy} type="submit">{busy ? "Saving…" : initial ? "Save changes" : `Save ${type}`}</Button></DialogActions>
-      </form>
-    </DialogContent>
-  </Dialog>;
-}
-
-function AuthScreen({ onSuccess }: { onSuccess: (user: { email: string }) => void }) { const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in"); const [error, setError] = useState(""); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false); const submit = async (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); setBusy(true); setError(""); setMessage(""); const form = new FormData(e.currentTarget); try { const result = await api<{ confirmation_required: boolean; message: string; user: { email: string } }>(`/api/session/${mode}`, { method: "POST", body: JSON.stringify({ email: form.get("email"), password: form.get("password") }) }); if (result.confirmation_required) setMessage(result.message || "Check your email to confirm your account."); else onSuccess(result.user); } catch (cause) { setError((cause as Error).message); } finally { setBusy(false); } }; return <div className="auth-page"><div className="auth-form-wrap"><div className="auth-form"><div className="auth-mobile-brand"><div className="brand-mark">M</div><strong>MyMoney</strong></div><span className="eyebrow">WELCOME TO MYMONEY</span><h2>{mode === "sign-in" ? "Welcome back" : "Create your account"}</h2><p>{mode === "sign-in" ? "Sign in to see your money more clearly." : "Start building a clearer picture of your finances."}</p><form onSubmit={submit}><TextField label="Email address" name="email" type="email" placeholder="you@example.com" autoComplete="email" required fullWidth/><TextField label="Password" name="password" type="password" slotProps={{ htmlInput: { minLength: mode === "sign-up" ? 8 : 1 } }} placeholder="Enter your password" autoComplete={mode === "sign-in" ? "current-password" : "new-password"} required fullWidth/>{error && <div className="form-error">{error}</div>}{message && <div className="success-banner">{message}</div>}<Button variant="contained" type="submit" className="primary-button auth-submit" disabled={busy}>{busy ? "Please wait..." : mode === "sign-in" ? "Sign in" : "Create account"}<ArrowRight size={18}/></Button></form><div className="auth-switch">{mode === "sign-in" ? "New to MyMoney?" : "Already have an account?"} <Button onClick={() => { setMode(mode === "sign-in" ? "sign-up" : "sign-in"); setError(""); setMessage(""); }}>{mode === "sign-in" ? "Create an account" : "Sign in"}</Button></div></div></div></div>; }
