@@ -31,13 +31,13 @@ export function Editor({ type, initial, sources, categories, onClose, onDone }: 
         {type === "transaction" ? <>
           <TextField label="Amount" name="amount" type="number" defaultValue={initial && "amount_minor" in initial ? initial.amount_minor / 100 : ""} slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }} required fullWidth/>
           <div className="form-row"><TextField label="Description" name="description" defaultValue={initial && "description" in initial ? initial.description : ""} slotProps={{ htmlInput: { maxLength: 200 } }} required/><TextField label="Date" name="date" type="date" defaultValue={initial && "occurred_on" in initial ? initial.occurred_on : today()} slotProps={{ inputLabel: { shrink: true } }} required/></div>
-          <div className="form-row"><TextField select label="Category" name="category_id" defaultValue={initial && "category_id" in initial ? initial.category_id || "" : ""}><MenuItem value="">Uncategorized</MenuItem>{categories.filter(c => c.kind === kind).map(c => <MenuItem value={c.id} key={c.id}>{c.parent_id ? "↳ " : ""}{c.name}</MenuItem>)}</TextField><TextField select label="Source" name="source_id" defaultValue={initial && "source_id" in initial ? initial.source_id || "" : ""}><MenuItem value="">No source</MenuItem>{sources.map(source => <MenuItem value={source.id} key={source.id}>{source.name}</MenuItem>)}</TextField></div>
+          <div className="form-row"><TextField select key={kind} label="Category" name="category_id" defaultValue={initial && "category_id" in initial && initial.kind === kind ? initial.category_id || "" : ""}><MenuItem value="">Uncategorized</MenuItem>{categories.filter(c => c.kind === kind).map(c => <MenuItem value={c.id} key={c.id}>{c.parent_id ? "↳ " : ""}{c.name}</MenuItem>)}</TextField><TextField select label="Source" name="source_id" defaultValue={initial && "source_id" in initial ? initial.source_id || "" : ""}><MenuItem value="">No source</MenuItem>{sources.map(source => <MenuItem value={source.id} key={source.id}>{source.name}</MenuItem>)}</TextField></div>
           <TextField label="Note" name="note" defaultValue={initial && "note" in initial ? initial.note : ""} multiline minRows={3} fullWidth/>
           <TextField label="Additional metadata (JSON)" name="metadata" defaultValue={initial && "metadata" in initial ? JSON.stringify(initial.metadata) : ""} multiline minRows={2} fullWidth/>
           <input name="currency" type="hidden" value={initial && "currency" in initial ? initial.currency : "INR"}/>
         </> : type === "category" ? <>
           <TextField label="Category name" name="name" defaultValue={initial && "name" in initial ? initial.name : ""} placeholder={kind === "expense" ? "e.g. Groceries" : "e.g. Salary"} required fullWidth/>
-          <TextField select label="Parent category" name="parent_id" defaultValue={initial && "parent_id" in initial ? initial.parent_id || "" : ""} fullWidth><MenuItem value="">Top level category</MenuItem>{categories.filter(c => c.kind === kind).map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}</TextField>
+          <TextField select key={kind} label="Parent category" name="parent_id" defaultValue={initial && "parent_id" in initial && initial.kind === kind ? initial.parent_id || "" : ""} fullWidth><MenuItem value="">Top level category</MenuItem>{categories.filter(c => c.kind === kind).map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}</TextField>
           <label>Color<input name="color" type="color" defaultValue={initial && "color" in initial ? initial.color : kind === "expense" ? "#ba3b42" : "#245fa6"}/></label>
         </> : <>
           <TextField label="Source name" name="name" defaultValue={initial && "name" in initial ? initial.name : ""} placeholder="e.g. Savings account" required fullWidth/>
@@ -51,4 +51,3 @@ export function Editor({ type, initial, sources, categories, onClose, onDone }: 
     </DialogContent>
   </Dialog>;
 }
-
