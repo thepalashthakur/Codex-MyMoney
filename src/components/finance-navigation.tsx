@@ -2,14 +2,13 @@
 
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
-import { ArrowRight, CreditCard, FolderTree, LayoutDashboard, LogOut, Settings2, X } from "lucide-react";
+import { ArrowRight, FolderTree, LayoutDashboard, LogOut, Settings2, X } from "lucide-react";
 import type { Tab } from "./finance-types";
 
 export const nav: { key: Tab; label: string; Icon: typeof LayoutDashboard }[] = [
   { key: "overview", label: "Overview", Icon: LayoutDashboard },
   { key: "transactions", label: "Transactions", Icon: ArrowRight },
-  { key: "categories", label: "Categories", Icon: FolderTree },
-  { key: "sources", label: "Sources", Icon: CreditCard },
+  { key: "manage", label: "Manage", Icon: FolderTree },
   { key: "settings", label: "Settings", Icon: Settings2 },
 ];
 
